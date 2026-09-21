@@ -32,7 +32,8 @@ Automates the "release prep" half of Princeton-CDH's [software release checklist
 | 14 | Lock deps | 🤖 (`pip freeze`/`uv lock --check`, see below) |
 | 15 | `git flow release finish` | ❌ out of scope — human does this after review + CI |
 | — | Push + open PR | 🤖 |
-| — | Monitor CI checks | 🤖 (stopping point) |
+| — | Monitor CI checks | 🤖 |
+| — | Post status update to tracking issue | 🤖 best-effort, comment only — never edits checkboxes (stopping point) |
 
 Non-applicable items (not Django / no JS frontend) are simply omitted from the final summary — don't list them as "n/a".
 
@@ -146,7 +147,15 @@ gh pr checks <pr-number-or-branch> --watch
 ```
 Or a one-shot `gh pr view <pr> --json statusCheckRollup` if watching isn't appropriate. Report pass/fail per check; don't fix failures unprompted — surface them for the user.
 
+**17. Post status update to tracking issue** (best-effort, actual stopping point). If this release has a tracking issue open from the `software_release.md` template, post the final summary there as a comment — don't edit checkboxes (see rationale below).
+
+- Find it: `gh issue list --search "in:title Release <version>" --state open`, or a label like `release-checklist` if the repo uses one. If nothing matches unambiguously (zero or multiple candidates), skip this step and note "no tracking issue found/ambiguous" in the chat summary — don't guess.
+- Post it: `gh issue comment <number> --body-file -` with the same final-summary content (below), including the PR link and CI status.
+- **Never edit the issue body / toggle its checkboxes.** GitHub has no per-checkbox API — "checking a box" means reading the whole body and writing it back, which risks silently clobbering a concurrent human edit and matching the wrong line if item wording has drifted from the template. A comment is append-only and carries no such risk, at the cost of not visually ticking the template's checkboxes — that stays a manual step for whoever reviews the release.
+
 ## Final summary
+
+Post this as-is to the tracking issue (step 17) and also show it in chat:
 
 ```
 ## Release <version> prep complete — PR opened: <url>
