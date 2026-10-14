@@ -1,0 +1,17 @@
+repos:
+  # validate agentic skills against the spec
+  - repo: https://github.com/agent-ecosystem/skill-validator
+    rev: v0.5.0
+    hooks:
+      - id: skill-validator
+        args: [check, skills/]
+        files: ^skills/
+  # mdformat for formatting Markdown files
+  - repo: https://github.com/hukkin/mdformat
+    rev: 82912cdaea4fb830f751504486a7879c70526547 # frozen: 1.0.0
+    hooks:
+      - id: mdformat
+        # Optionally add plugins
+        additional_dependencies:
+          - mdformat-pyproject # support configuration in pyproject.toml
+          - mdformat-frontmatter # support GitHub front-matter
