@@ -106,7 +106,7 @@ gh issue list --state closed --search "closed:>=<last-tag-date>" --json number,t
 gh pr list --state merged --search "merged:>=<last-tag-date>" --json number,title,labels
 ```
 
-Cross-reference `#123`-style references in commits to avoid noise. Group Features/Fixes/Other by label or commit prefix. Insert at top of the changelog file (`CHANGELOG.rst`/`.md`/`docs/changelog.rst`, or `changelog_file` from config), marked `<!-- DRAFT — generated from git log + closed issues/PRs -->`. In the final summary, list every closed issue/PR the query found with ✅ included / ⚠️ excluded + reason, so the user can catch anything the heuristics missed.
+Cross-reference `#123`-style references in commits to avoid noise. Group Features/Fixes/Other by label or commit prefix. Insert at top of the changelog file (`CHANGELOG.rst`/`.md`/`docs/changelog.rst`, or `changelog_file` from config), marked `<!-- DRAFT — generated from git log + closed issues/PRs -->`. In the final summary, list every closed issue/PR the query found with ✅ included / ⚠️ excluded + reason, so the user can catch anything the heuristics missed. Make updates consistent with existing changelog entries in style, tone, and formatting; don't overcomplicate and focus on user-facing features.
 
 **7. Draft deploy notes** (Django only). Find the file (`docs/deploynotes.rst`, `docs/deploy_notes.md`, or `deploy_notes_file` from config). Draft bullets from the diff: new settings not in the sample → "needs configuring"; new migrations → "run migrations"; new/changed management commands → possible one-off step. Mark as draft.
 
@@ -144,7 +144,7 @@ Report pass/fail and coverage % in the summary as information, not as something 
 - pip: `pip freeze > requirements.lock && git add requirements.lock`
 - uv: `uv lock --check`; if it fails, run `uv lock` and stage the result. (uv.lock is normally kept current every commit — don't `pip freeze` here.)
 
-**15. Commit, push, open PR.** PR body must open with an AI-generated-content marker, then the same drafted-changelog/flagged-items content as the final summary (minus CI status, which isn't known yet), and close with a one-line skill attribution/link for traceability:
+**15. Commit, push, open draft PR.** PR body must open with an AI-generated-content marker, then the same drafted-changelog/flagged-items content as the final summary (minus CI status, which isn't known yet), and close with a one-line skill attribution/link for traceability:
 
 ```
 :robot: This PR was prepared by an AI agent (release-prep skill). Review the drafted and flagged sections below before merging.
