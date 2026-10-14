@@ -73,7 +73,7 @@ If it doesn't exist, auto-detect (below) and offer to write it after a successfu
 **2. Sync branches**
 
 ```bash
-git fetch --all --prune
+git fetch --all
 git checkout develop && git pull
 git checkout main && git pull
 ```
