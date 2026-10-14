@@ -4,7 +4,7 @@ description: Preps a Princeton-CDH-style Python release branch (git flow) and op
 license: Apache-2.0
 metadata:
   author: princeton-cdh
-  version: "1.1.0"
+  version: "1.0.0"
 ---
 
 # Release Prep
