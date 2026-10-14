@@ -40,7 +40,7 @@ Non-applicable items (not Django / no JS frontend) are simply omitted from the f
 
 ## Setup
 
-**Ask first:** repo path (or offer to clone); PR base branch (default `main`). Don't ask for version — step 1 determines it. Confirm `git status --porcelain` is clean before doing anything; if dirty, stop and ask rather than stash/discard.
+**Ask first:** repo path (or offer to clone); PR base branch (default `main`). Don't ask for version — step 1 in the workflow determines it. Confirm `git status --porcelain` is clean before doing anything; if dirty, stop and ask rather than stash/discard.
 
 **Resuming a release already in progress:** check `git branch --list 'release/*'` and `git ls-remote --heads origin 'release/*'` first. If a release branch exists, check it out (don't re-run `git flow release start`), diff it against develop/main to see what's already done, and report that before touching anything. If a PR's already open, jump to step 16.
 
