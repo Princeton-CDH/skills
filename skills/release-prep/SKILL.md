@@ -9,73 +9,50 @@ metadata:
 
 # Release Prep
 
-Automates the "release prep" half of Princeton-CDH's [software release checklist](https://github.com/Princeton-CDH/.github/blob/main/.github/ISSUE_TEMPLATE/software_release.md) for Python repos using git flow. Stops at opening a draft PR (used to verify CI) — never merges, tags, or runs `git flow release finish`; the "after release" checklist section is out of scope. Plain markdown + shell/git/gh — portable to any agentic tool.
+Automates the "release prep" half of Princeton-CDH's [software release checklist](https://github.com/Princeton-CDH/.github/blob/main/.github/ISSUE_TEMPLATE/software_release.md) for Python repos using git flow. Ends with a draft PR (to verify CI) and a tracking-issue comment. **Never** merge, tag, force-push, rewrite shared history, or run `git flow release finish` — the human does those, plus the "after release" checklist.
 
-## Scope
+Step markers: 🤖 automated · 📝 drafted for review · 🚩 flagged for human judgment. Steps marked _Django_ or _JS_ run only for that stack.
 
-🤖 auto · 📝 draft (needs review) · 🚩 flag (needs human judgment)
+## Reporting rules
 
-| Item                                            | Handling                                                               |
-| ----------------------------------------------- | ---------------------------------------------------------------------- |
-| Determine next version                          | 🤖, prompts if ambiguous                                               |
-| Pull develop/main                               | 🤖                                                                     |
-| `git flow release start`                        | 🤖                                                                     |
-| Review DB migrations                            | 🚩 Django only                                                         |
-| Bump version                                    | 🤖                                                                     |
-| Changelog                                       | 📝 from git log + closed issues/PRs                                    |
-| Open milestone issues, dependabot PRs           | 🚩                                                                     |
-| Deploy notes                                    | 📝 Django only                                                         |
-| Local settings sample                           | 🚩 Django only                                                         |
-| Internal Python deps need release/pin           | 🚩                                                                     |
-| Internal JS deps need release                   | 🚩 only if JS frontend                                                 |
-| `npm audit fix`                                 | 🤖 only if JS frontend                                                 |
-| Tests + coverage                                | 🤖 info only — reported, not flagged                                   |
-| Docs/schema                                     | 🚩 Django only                                                         |
-| Lock deps                                       | 🤖 (`pip freeze` / `uv lock --check`)                                  |
-| `git flow release finish`                       | ❌ out of scope — human does this after review + CI                    |
-| Push + open draft PR                            | 🤖                                                                     |
-| Monitor CI checks                               | 🤖                                                                     |
-| Post status update to tracking issue            | 🤖 best-effort, comment only — never edits checkboxes (stopping point) |
+- Steps that don't apply to the repo's stack are **omitted** from the summary (no "n/a").
+- Steps that should have run but couldn't (missing tool, failed command, expected file not found after a brief search) go under **Skipped or failed** with the reason. Never skip silently or imply success.
+- If a 🤖 step fails, stop and report rather than pushing a broken branch.
 
-Items that don't apply to this repo's stack (not Django / no JS frontend) are simply omitted from the final summary — don't list them as "n/a". This is different from a step that _should_ have run but couldn't (see "Skipped or failed" below): those must always be reported.
+## Setup
 
-## Pre-Workflow Setup
+1. **Tools:** `git` + `git-flow`, `gh` (authenticated), `uv` if used. Run `gh auth status` first; if `gh` is unusable, warn that changelog issue/PR sources, PR creation, CI monitoring, and the issue comment depend on it, and ask whether to continue local-only.
+2. **Ask:** repo path (or offer to clone) and PR base branch (default `main`). Don't ask for the version.
+3. **Clean tree:** if `git status --porcelain` is dirty, stop and ask — don't stash or discard.
+4. **Resume check:** `git branch --list 'release/*'` and `git ls-remote --heads origin 'release/*'`. If a release branch exists, check it out (skip step 3), diff against develop/main, and report what's done before changing anything. If a PR is already open, skip to step 16.
+5. **Config:** read `.release-prep.yml` at repo root if present; set fields override auto-detection. If a field contradicts the repo (e.g. `django: false` with `manage.py`), flag it rather than override.
 
-**Requirements:** `git` with `git-flow`; the GitHub CLI (`gh`), authenticated; `uv` if the repo uses it. Preflight with `gh auth status` before doing anything. If `gh` is missing or unauthenticated, stop and tell the user up front that the closed issue/PR changelog sources, PR creation, CI monitoring, and the tracking-issue comment all depend on it, and ask whether to continue with local-only steps.
+   ```yaml
+   django: false
+   js_frontend: false
+   dependency_manager: uv # uv | pip
+   version_file: src/mypackage/__init__.py
+   release_candidate_suffix: "" # literal, e.g. "rc1"; omit for final versions
+   test_command: "uv run pytest --cov"
+   changelog_file: CHANGELOG.md
+   deploy_notes_file: docs/deploynotes.rst
+   settings_sample_file: mypackage/settings/local_settings.py.sample
+   coverage_threshold: 95
+   pr_base_branch: main
+   ```
 
-**Ask first:** repo path (or offer to clone); PR base branch (default `main`). Don't ask for the version — the first workflow step determines it. Confirm `git status --porcelain` is clean before doing anything; if dirty, stop and ask rather than stash/discard.
+   Unset fields are auto-detected:
+   - **Django:** `manage.py` at root, or `django` in `requirements*.txt`/`pyproject.toml`/`setup.cfg`.
+   - **JS frontend:** `package.json` with real `dependencies`/`scripts`.
+   - **Dependency manager:** `uv.lock` or `[tool.uv]` in `pyproject.toml` → uv; else pip.
 
-**Resuming a release already in progress:** check `git branch --list 'release/*'` and `git ls-remote --heads origin 'release/*'` first. If a release branch exists, check it out (don't re-run `git flow release start`), diff it against develop/main to see what's already done, and report that before touching anything. If a PR is already open, skip to the CI-monitoring step.
-
-**Project config** — look for `.release-prep.yml` at repo root first; any field it sets skips auto-detection for that item:
-
-```yaml
-django: false
-js_frontend: false
-dependency_manager: uv # uv | pip
-version_file: src/mypackage/__init__.py
-release_candidate_suffix: "" # optional, literal suffix e.g. "rc1" or "-rc1"; omit for final versions
-test_command: "uv run pytest --cov" # optional override
-changelog_file: CHANGELOG.md
-deploy_notes_file: docs/deploynotes.rst
-settings_sample_file: mypackage/settings/local_settings.py.sample
-coverage_threshold: 95
-pr_base_branch: main
-```
-
-If it doesn't exist, auto-detect (below) and offer to write it after a successful run — only if the user says yes, as its own commit. If it exists but looks stale (e.g. `django: false` with `manage.py` present), flag the mismatch rather than overriding it.
-
-**Auto-detection** (whatever the config didn't set):
-
-- Django: `manage.py` at root, or `django` in `requirements*.txt`/`pyproject.toml`/`setup.cfg`. Enables the Django-only steps.
-- JS frontend: `package.json` with real `dependencies`/`scripts` (not just a stray config file). Enables the JS steps.
-- Dependency manager: `uv.lock` or `[tool.uv]` in `pyproject.toml` → uv; else pip. Determines how tests are run and how dependencies are locked.
+   If no config exists, offer to write one after a successful run (separate commit, only if the user agrees).
 
 ## Workflow
 
-**1. Determine next version** (before any branch work). Find current version + last tag (`git describe --tags --abbrev=0` on `main`). Gather signal: `git log <last-tag>..develop --oneline --no-merges` plus closed issues/PRs and their labels (see the changelog step). Classify: any breaking signal → major; any feature, no breaking → minor; only fixes/chores → patch. If the repo uses major.minor versioning (e.g. `0.5`→`0.6`) and signal is patch-only, or signal is genuinely mixed/unclear, **ask the user**. Otherwise state the version and reason in one line and continue.
+**1. Determine version** 🤖. Get the last tag (`git describe --tags --abbrev=0` on `main`) and gather signal from `git log <last-tag>..develop --oneline --no-merges` plus closed issues/PRs and labels (step 6). Breaking → major; features → minor; only fixes/chores → patch. **Ask** if the signal is mixed/unclear, or the repo uses major.minor versioning and signal is patch-only. Otherwise state version + reason in one line.
 
-**2. Sync branches**
+**2. Sync** 🤖
 
 ```bash
 git fetch --all
@@ -83,160 +60,114 @@ git checkout develop && git pull
 git checkout main && git pull
 ```
 
-**3. Start release branch** — skip if resuming.
+**3. Start release branch** 🤖: `git flow release start <version>` (fallback, noted: `git checkout -b release/<version> develop`).
 
-```bash
-git flow release start <version>
-```
+**4. Migrations** 🚩 _Django_: `git diff main...HEAD --stat -- '**/migrations/*.py'`. List changed files; don't judge them.
 
-Fall back to `git checkout -b release/<version> develop` if `git flow` isn't installed; note the fallback.
+**5. Bump version** 🤖. Use `version_file` if set; otherwise update **all** of: `__version__` in `<package>/__init__.py` or `src/<package>/__init__.py`, `version` in `pyproject.toml`, `setup.cfg`/`setup.py`. Strip `-pre`/`-dev`/`.dev0`; append `release_candidate_suffix` if configured. Show the diff.
 
-**4. Review migrations** (Django only)
-
-```bash
-git diff main...HEAD --stat -- '**/migrations/*.py'
-```
-
-List changed files in the summary; don't judge correctness.
-
-**5. Bump version.** Use `version_file` from config if set; otherwise search, in order, and update **all** matches found (strip `-pre`/`-dev`/`.dev0`): `<package>/__init__.py` or `src/<package>/__init__.py` (`__version__`) → `pyproject.toml` (`version`) → `setup.cfg`/`setup.py`. If `release_candidate_suffix` is configured, append it literally; the human removes it later (see next steps). Show the diff.
-
-**6. Draft changelog** from two sources:
+**6. Changelog** 📝
 
 ```bash
 git log <last-tag>..HEAD --oneline --no-merges
-gh issue list --state closed --milestone "<version>" --json number,title,labels   # if repo uses milestones
-# else:
+gh issue list --state closed --milestone "<version>" --json number,title,labels   # if milestones used, else:
 gh issue list --state closed --search "closed:>=<last-tag-date>" --json number,title,labels
 gh pr list --state merged --search "merged:>=<last-tag-date>" --json number,title,labels
 ```
 
-Cross-reference `#123`-style references in commits to avoid noise. Group Features/Fixes/Other by label or commit prefix. Insert at top of the changelog file (`CHANGELOG.rst`/`.md`/`docs/changelog.rst`, or `changelog_file` from config), marked `<!-- DRAFT — generated from git log + closed issues/PRs -->`. Make updates consistent with existing changelog entries in style, tone, and formatting; don't overcomplicate and focus on user-facing features. In the final summary, list every closed issue/PR the query found with ✅ included / ⚠️ excluded + reason, so the user can catch anything the heuristics missed.
+Dedupe via `#123` references in commits; group Features/Fixes/Other by label or commit prefix. Insert at the top of `changelog_file` (or `CHANGELOG.rst`/`.md`/`docs/changelog.rst`) with `<!-- DRAFT — generated from git log + closed issues/PRs -->`. Match existing style; keep it short and user-facing. In the summary, list every closed issue/PR found as ✅ included / ⚠️ excluded + reason.
 
-**7. Check open work** (flag only)
+**7. Open work** 🚩
 
 ```bash
-gh issue list --state open --milestone "<version>" --json number,title,labels   # if repo uses milestones
+gh issue list --state open --milestone "<version>" --json number,title,labels   # if milestones used
 gh pr list --author "app/dependabot" --state open --json number,title
 ```
 
-List open milestone issues as unresolved, **excluding** the release tracking issue itself and post-release tasks (e.g. titled "Deploy …" or labeled as deployment). If unsure whether an issue is post-release, list it separately as "possibly post-release" rather than as unresolved. List open dependabot PRs so the user can decide which to pull into this release; don't merge any.
+List open milestone issues, excluding the tracking issue and post-release tasks (e.g. "Deploy …"); list uncertain ones separately as "possibly post-release". List dependabot PRs for the user to consider; don't merge.
 
-**8. Draft deploy notes** (Django only). Find the file (`docs/deploynotes.rst`, `docs/deploy_notes.md`, or `deploy_notes_file` from config). Draft bullets from the diff: new settings not in the sample → "needs configuring"; new migrations → "run migrations"; new/changed management commands → possible one-off step. Mark as draft.
+**8. Deploy notes** 📝 _Django_. In `deploy_notes_file` (or `docs/deploynotes.rst` / `docs/deploy_notes.md`), draft bullets: new settings → "needs configuring"; new migrations → "run migrations"; new/changed management commands → possible one-off step.
 
-**9. Check local settings sample** (Django only). Diff the sample settings file against real settings for missing keys; list gaps. If no sample file exists, or the only one is test-only, skip quietly and omit it from the summary.
+**9. Settings sample** 🚩 _Django_. Diff the sample against real settings for missing keys. If there's no sample (or only a test one), omit.
 
-**10. Check Python deps**
+**10. Python deps** 🚩: `grep -E 'git\+|@ git|-e git' requirements*.txt pyproject.toml`. Flag internal deps pinned to a branch/commit.
 
-```bash
-grep -E 'git\+|@ git|-e git' requirements*.txt pyproject.toml 2>/dev/null
-```
+**11. JS deps** 🚩🤖 _JS_: `grep -E '"file:|"git\+|workspace:' package.json` — flag unreleased internal deps; then `npm audit fix` (not `--force`).
 
-Flag internal deps pinned to a branch/commit instead of a release.
+**12. Tests + coverage** 🤖 (info only). Use `test_command`, else `pytest --cov --cov-report=term-missing` or `python manage.py test`, prefixed with `uv run` in uv projects. Report pass/fail and coverage %, noting plainly if below `coverage_threshold` (default 95). Don't gate the PR or write tests.
 
-**11. Check JS deps + audit** (only if JS frontend)
+**13. Docs/schema** 🚩 _Django_. If models changed and schema tooling exists (e.g. `django-extensions graph_models`), regenerate and commit; otherwise flag.
 
-```bash
-grep -E '"file:|"git\+|workspace:' package.json
-npm audit fix   # not --force
-```
+**14. Lock deps** 🤖. pip: `pip freeze > requirements.lock` and stage. uv: `uv lock --check`; if it fails, `uv lock` and stage.
 
-Flag internal deps that look unreleased.
+**15. Commit, push, draft PR** 🤖.
 
-**12. Tests + coverage.** Use `test_command` from config if set. Otherwise, in uv projects run tests through uv (`uv run pytest --cov --cov-report=term-missing`, or `uv run python manage.py test`); in pip projects use the active environment (`pytest --cov --cov-report=term-missing`, or `python manage.py test`). Report pass/fail and coverage % as information, not as something requiring a decision — don't gate the PR on it or write tests unprompted. If it's below the configured threshold (`coverage_threshold`, default 95), say so plainly alongside the number. If the tests can't be run (missing environment, wrong command), report that as skipped/failed with the reason — never imply they passed.
+- **Tracking issue:** `gh issue list --search "in:title Release <version>" --state open` (or a `release-checklist` label). If not exactly one match, don't guess; omit and note it.
+- **Commits:** one or a few logical, reviewable commits, each with an `Assisted-by: <agent>:<model>` trailer. If a pre-commit hook only reformatted, re-stage and retry once; otherwise stop and report. Never `--no-verify`.
+- **PR body:** the final summary (minus CI status), wrapped as:
 
-**13. Docs/schema** (Django only). If migrations changed models and schema-diagram tooling exists (e.g. `django-extensions graph_models`), regenerate and commit. Otherwise flag for manual review.
+  ```
+  :robot: This PR was prepared by an AI agent (release-prep skill) as a draft to verify CI. Review the drafted and flagged sections below before finishing the release.
 
-**14. Lock dependencies.**
+  Associated issue: Closes #<tracking-issue>   [omit if none]
 
-- pip: `pip freeze > requirements.lock && git add requirements.lock`
-- uv: `uv lock --check`; if it fails, run `uv lock` and stage the result. (uv.lock is normally kept current every commit — don't `pip freeze` here.)
+  <final summary>
 
-**15. Commit, push, open draft PR.**
-
-_Find the tracking issue first:_ `gh issue list --search "in:title Release <version>" --state open` (or a label like `release-checklist` if the repo uses one). If zero or multiple candidates, don't guess — omit the issue link and note it in the summary.
-
-_Commit:_ one or a few logical commits, keeping the version bump, changelog, deploy notes, and lock file easy to review. Every commit message must include an `Assisted-by: <agent>:<model>` trailer, since these commits end up in the main history. If a pre-commit hook fails: if it only reformatted files, re-stage and retry once; otherwise stop and report the hook output. Never use `--no-verify`.
-
-_PR body_ must open with an AI-generated-content marker, then the associated issue, then the same drafted-changelog/flagged-items content as the final summary (minus CI status, which isn't known yet), and close with a skill attribution:
-
-```
-:robot: This PR was prepared by an AI agent (release-prep skill) as a draft to verify CI. Review the drafted and flagged sections below before finishing the release.
-
-Associated issue: Closes #<tracking-issue>   [omit if none found]
-
-<changelog draft summary, issues included/excluded, deploy notes summary, flagged items, coverage %, next steps>
-
----
-:robot: Generated by the `release-prep` skill v<metadata.version from frontmatter> — https://github.com/Princeton-CDH/skills/tree/main/skills/release-prep. Something look wrong? Flag it there.
-```
+  ---
+  :robot: Generated by the `release-prep` skill v<metadata.version> — https://github.com/Princeton-CDH/skills/tree/main/skills/release-prep. Something look wrong? Flag it there.
+  ```
 
 ```bash
 git push -u origin release/<version>
-gh pr create --draft --base <base-branch> --head release/<version> --title "Release <version>" --body "<body above>"
+gh pr create --draft --base <base-branch> --head release/<version> --title "Release <version>" --body "<body>"
 ```
 
-**Only say a PR was opened if `gh pr create` returned a URL.** If `gh` is unavailable, unauthenticated, or the command failed, say plainly that the branch was pushed but no PR was created, print the PR title/body for manual use, and give the compare URL.
+Only claim a PR exists if `gh pr create` returned a URL. Otherwise say the branch was pushed without a PR, and give the title/body and compare URL.
 
-**16. Monitor CI.**
+**16. Monitor CI** 🤖: `gh pr checks <pr> --watch` (or one-shot `gh pr view <pr> --json statusCheckRollup`). Report per check; surface failures, don't fix them.
 
-```bash
-gh pr checks <pr-number-or-branch> --watch
-```
-
-Or a one-shot `gh pr view <pr> --json statusCheckRollup` if watching isn't appropriate. Report pass/fail per check; don't fix failures unprompted — surface them for the user.
-
-**17. Post status update to tracking issue** (best-effort, actual stopping point). Using the tracking issue found when opening the PR, post the final summary as a comment: `gh issue comment <number> --body-file -`, including the PR link and CI status. If no issue was found, skip and note it in the chat summary.
-
-**Never edit the issue body / toggle its checkboxes.** GitHub has no per-checkbox API — "checking a box" means reading the whole body and writing it back, which risks silently clobbering a concurrent human edit and matching the wrong line if item wording has drifted from the template. A comment is append-only and carries no such risk, at the cost of not visually ticking the template's checkboxes — that stays a manual step for whoever reviews the release.
+**17. Comment on tracking issue** 🤖 (stopping point). Post the final summary with PR link and CI status: `gh issue comment <number> --body-file -`. Skip if no issue was found. **Never edit the issue body or tick its checkboxes** — that requires rewriting the whole body, risking clobbered concurrent edits; ticking stays manual.
 
 ## Final summary
 
-Post this as-is to the tracking issue and also show it in chat:
+Show in chat and post to the tracking issue:
 
 ```
 ## Release <version> prep complete — draft PR: <url>
-[If no PR was created: "## Release <version> branch prepped — PR NOT created (<reason>)", then include the PR body for manual use.]
+[If no PR: "## Release <version> branch prepped — PR NOT created (<reason>)" + PR body for manual use.]
 
 ### CI status
 - <check>: ✅/❌/⏳
 
 ### Version
-- Last: <last-tag> → Next: <version> (<major|minor|patch> — <reason>)
+- <last-tag> → <version> (<major|minor|patch> — <reason>)
 
-### Drafted — review before finishing the release
-- Changelog (sources used): closed issues/PRs since <last-tag>:
-  - #123 "Title" — ✅ included (commit <sha>) / ⚠️ excluded (<reason>)
-- Deploy notes: <summary>   [omit this line entirely if not Django]
+### Drafted — review before finishing
+- Changelog — closed issues/PRs since <last-tag>:
+  - #123 "Title" — ✅ included (<sha>) / ⚠️ excluded (<reason>)
+- Deploy notes: <summary>
 
 ### Test coverage (info)
-- <%> (threshold <n>%) — <above/below threshold, no action implied>
+- <%> (threshold <n>%)
 
 ### Needs your judgment
-[List only items that apply and have findings; omit anything that doesn't apply
-to this repo or had nothing found — don't write "n/a".]
-- Open milestone issues: <list; "possibly post-release" listed separately>
-- Dependabot PRs to consider including: <list>
-- Migrations: <list>
-- Local settings sample: <gaps>
-- Python/JS deps needing release: <list>
-- Docs/schema: <finding>
+[Only items with findings.]
+- Open milestone issues (+ "possibly post-release")
+- Dependabot PRs to consider
+- Migrations
+- Settings sample gaps
+- Python/JS deps needing release
+- Docs/schema
 
 ### Skipped or failed
-[Steps that should have run but couldn't — e.g. gh unauthenticated, tests couldn't
-run, pre-commit hook failed — each with the reason. Omit the section if none.]
+[Each with reason; omit section if none.]
 
 ### What to do next
-1. Review the drafted changelog and deploy notes above (and in the PR).
-2. Resolve anything under "Needs your judgment."
-3. If a release candidate suffix was used: after acceptance testing, remove it from the version.
-4. Once CI passes and review looks good: run `git flow release finish <version>` yourself (merges to main and develop, tags, deletes the branch), then push main, develop, and tags. The draft PR should then show as merged; close it manually if it doesn't.
-5. Then complete the "after release" checklist (e.g. bump develop's version).
+1. Review the drafted changelog and deploy notes.
+2. Resolve "Needs your judgment" items.
+3. If an RC suffix was used, remove it after acceptance testing.
+4. When CI and review pass: `git flow release finish <version>`, then push main, develop, and tags. Close the draft PR if it doesn't show as merged.
+5. Complete the "after release" checklist (e.g. bump develop's version).
 ```
 
-## Notes
-
-- Never force-push, rewrite shared history, or run `git flow release finish` — human calls those.
-- If any 🤖 step fails, stop and report rather than pushing a broken branch.
-- Never skip a step silently. A step that doesn't apply to the repo's stack is omitted from the summary; a step that should have run but couldn't goes under "Skipped or failed" with the reason. If an expected file (changelog, deploy notes, settings sample) isn't where expected, search briefly, then report it the same way.
-- When editing this skill's own workflow, bump `metadata.version` in the frontmatter (semver) — the PR footer reports it for traceability.
+_Maintainers: bump `metadata.version` (semver) when changing this workflow — the PR footer reports it._
