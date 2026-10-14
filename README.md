@@ -14,6 +14,17 @@ The skills can be downloaded and installed manually, but we recommend installing
 gh skill install princeton-cdh/skills
 ```
 
+## Contributor Setup:
+
+[Install uv](https://docs.astral.sh/uv/getting-started/installation) if you don't already have it.
+
+Install `pre-commit` with `uv`, then install configured pre-commit hooks:
+
+```sh
+uv tool install pre-commit --with pre-commit-uv
+pre-commit install
+```
+
 ## License
 
 Content is licensed under the [Apache 2.0 License](LICENSE).
