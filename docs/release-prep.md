@@ -3,7 +3,7 @@
 An agent skill that does the "release prep" half of the Princeton-CDH
 [software release checklist](https://github.com/Princeton-CDH/.github/blob/main/.github/ISSUE_TEMPLATE/software_release.md)
 for Python repos that use git flow. The instructions the agent follows are in
-[`SKILL.md`](SKILL.md); this file is for humans.
+[`SKILL.md`](../skills/release-prep/SKILL.md); this file is for humans.
 
 ## What it does
 
@@ -36,21 +36,8 @@ ends with a "What to do next" list.
 The skill auto-detects Django, a JS frontend, and uv vs. pip. If detection is
 wrong or you want to pin settings once per repo, add a `.release-prep.yml` at
 the repo root. Any field you set is used as-is; anything you leave out is
-auto-detected.
-
-```yaml
-django: false
-js_frontend: false
-dependency_manager: uv # uv | pip
-version_file: src/mypackage/__init__.py
-release_candidate_suffix: "" # e.g. "rc1"; omit for final versions
-test_command: "uv run pytest --cov"
-changelog_file: CHANGELOG.md
-deploy_notes_file: docs/deploynotes.rst
-settings_sample_file: mypackage/settings/local_settings.py.sample
-coverage_threshold: 95
-pr_base_branch: main
-```
+auto-detected. See the example with all supported fields in
+[`SKILL.md`](../skills/release-prep/SKILL.md#setup) (step 5).
 
 If there's no config file, the skill offers to write one after a successful run.
 
@@ -60,8 +47,3 @@ Review the changelog, deploy notes, and flagged items before finishing the
 release. The PR and its commits are marked as AI-assisted, and the PR footer
 records which skill version produced it. If something looks wrong, open an
 issue on this repo.
-
-## Versioning
-
-The skill version lives in the `metadata.version` field of `SKILL.md`. Bump it
-whenever the workflow changes.

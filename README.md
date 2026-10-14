@@ -4,7 +4,7 @@ This repository provides agentic skills related to Princeton CDH RSE team workfl
 
 ## Skills:
 
-- release-prep : prepare a software package for a new release, following the first portion of our team software release checklist
+- [release-prep](docs/release-prep.md): prepare a software package for a new release, following the first portion of our team software release checklist
 
 ## To use:
 
