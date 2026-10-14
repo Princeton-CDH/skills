@@ -38,7 +38,7 @@ Automates the "release prep" half of Princeton-CDH's [software release checklist
 
 Non-applicable items (not Django / no JS frontend) are simply omitted from the final summary — don't list them as "n/a".
 
-## Setup
+## Pre-Workflow Setup
 
 **Ask first:** repo path (or offer to clone); PR base branch (default `main`). Don't ask for version — step 1 in the workflow determines it. Confirm `git status --porcelain` is clean before doing anything; if dirty, stop and ask rather than stash/discard.
 
